@@ -18,6 +18,44 @@ const GENERAL = [
   { id: "gen-diverse", label: "Diverse", re: /divers|altele|alta|bilet|parcar|taxa/ },
 ];
 
+// Bază de plaje curată (din cunoștințe, rating orientativ) — N / NV / NE Sardinia.
+// Folosită ca referință de recomandare în chat. acces: da / limitat / nu (cu mașina).
+const BEACHES = `PLAJE CURATE (rating orientativ pe 5). Coloane: nume (zonă, ~timp de la bază) — ★rating — mașină — spectaculoasă/notă.
+
+NE — San Teodoro / Tavolara / Posada / Siniscola / Orosei (zona bazei Posada, zilele 2–4):
+- La Cinta (San Teodoro) ★4.5 — mașină: da, parcare — 3,5 km nisip alb, Tavolara în zare.
+- Cala Brandinchi (San Teodoro) ★4.3 — da — „Micul Tahiti"; rezervare vara.
+- Lu Impostu (San Teodoro) ★4.4 — da — lagună fină; rezervare vara.
+- Capo Coda Cavallo ★4.5 — da (drum scurt de pământ) — sălbatică, snorkeling top.
+- Cala Girgolu (Capo Coda Cavallo) ★4.4 — da, parcare aproape — mică, turcoaz, ~15 min de La Cinta.
+- Cala d'Ambra (San Teodoro) ★4.2 — da, în oraș — comodă, familii.
+- Porto Istana (Olbia) ★4.4 — da, parcare — vedere directă spre Tavolara.
+- Berchida (Siniscola, ~20–25 min de Posada) ★4.7 — da (drum + parcare) — superbă: nisip alb, dune, pini; sălbatică, fără mult comerț.
+- Capo Comino (Siniscola, ~15 min de Posada) ★4.4 — da — far, dune albe, sălbatică.
+- Bidderosa (Siniscola, ~25 min de Posada) ★4.7 — limitat (taxă + nr. limitat de mașini/zi, rezervă din timp) — 5 calanci în rezervație, spectaculoasă.
+- Cala Liberotto / Cala Ginepro (Orosei, ~30 min de Posada) ★4.4 — da, pini, parcare — familii.
+- Spiaggia di Posada / Su Tiriarzu (Posada) ★4.2 — da, chiar lângă bază — comodă.
+- Budoni ★4.3 — da — nisip lung, familii.
+
+N — Costa Smeralda / Gallura / Santa Teresa / Palau (ziua 4 = Costa Smeralda):
+- Spiaggia del Principe (Costa Smeralda) ★4.5 — da (parcare ~12€ + 15 min mers) — granit roz, apă smarald.
+- Capriccioli (Costa Smeralda) ★4.4 — da, parcare — golfuri, familii.
+- Liscia Ruja / Long Beach (Costa Smeralda) ★4.4 — da, parcare — cea mai întinsă din CS.
+- Rena Bianca (Santa Teresa Gallura) ★4.5 — da, în oraș — vedere spre Corsica.
+- Porto Pollo / Isuledda (Palau) ★4.4 — da, parcare — kitesurf, lagună.
+- Cala Coticcio „Tahiti" (Caprera) ★4.7 — mașină: NU (drum pe jos ~45 min + permis) — spectaculoasă, dar greu accesibilă.
+- Spiaggia Rosa (Budelli) — mașină: NU (doar cu barca, zonă protejată) — celebră, dar inaccesibilă cu mașina.
+
+NV — Alghero / Stintino / Bosa (zilele 1 și 5, baza Alghero):
+- La Pelosa (Stintino) ★4.6 — limitat (parcare plătită + taxă/nr. limitat vara) — spectaculoasă, aspect caraibic; e în NV, departe de Posada.
+- Le Bombarde (Alghero) ★4.4 — da, parcare — pini, apă turcoaz.
+- Lazzaretto (Alghero) ★4.4 — da — golfuleț turcoaz, apă mică.
+- Spiaggia di Maria Pia (Alghero) ★4.3 — da, lângă oraș — pini.
+- Mugoni (Porto Conte) ★4.4 — da, parcare — golf adăpostit, bun pentru familii.
+- Cala Dragunara (Capo Caccia) ★4.3 — da — mică, sub falezele de la Capo Caccia.
+- Porto Ferro ★4.5 — da — nisip roșcat-auriu, sălbatică, valuri (surf).
+- Bosa Marina (Bosa) ★4.2 — da — comodă, lângă orășelul colorat.`;
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -67,7 +105,7 @@ const TOOLS = [
   },
 ];
 
-function sysPrompt(context) {
+function sysPrompt(context, beaches) {
   return `Ești asistentul de călătorie al unui sejur în Sardinia: sosire și plecare din Alghero, cazare în Posada, 14–18 iunie 2026. Răspunde SCURT, în română, prietenos și concret. NU inventa prețuri, orare exacte sau rezervări.
 Zilele: 1=Duminică 14 iun (sosire Alghero 08:00), 2=Luni 15, 3=Marți 16, 4=Miercuri 17, 5=Joi 18 (plecare, avion 15:00 din Alghero).
 Categorii: beach, view, sight, boat, food, drive.
@@ -78,9 +116,10 @@ Confirmă scurt în text DOAR ce ai făcut efectiv prin tool-uri.
 Cum alegi un loc când recomanzi/adaugi (mai ales plaje). Întâi FILTRE obligatorii, apoi ratingul alege:
 - FILTRU 1 (mașină): utilizatorul ajunge cu mașina închiriată — exclude locurile accesibile doar cu barca sau cu drum lung pe jos; preferă unde se poate parca aproape.
 - FILTRU 2 (zonă): locul TREBUIE să fie în ACEEAȘI zonă/coastă cu opririle zilei, la max ~40 min cu mașina de ele. NU propune un loc de pe altă coastă, oricât de faimos sau bine cotat. Exemplu de GREȘEALĂ de evitat: dacă ziua e în zona San Teodoro / Tavolara / Posada (coasta de NE), NU propune Pelosa/Stintino sau Costa Smeralda — alege plaje din zona San Teodoro / Budoni / Siniscola (ex: Cala d'Ambra, Cala Girgolu, Berchida, Bidderosa). Pentru zilele din Alghero (1 și 5), alege din NV (Bombarde, Lazzaretto, Maria Pia, Mugoni).
-- ALEGE apoi, dintre cele care trec filtrele, pe cea cu RATING cât mai mare.
-Nu duplica un loc deja în program. Spune scurt ratingul (estimativ) și motivul (ex: „~4.6, la 15 min, parcare lângă plajă") și pune valoarea în câmpul rating. Dacă nu ești sigur de zonă sau rating, spune-i sincer să verifice pe Maps.
-
+- ALEGE apoi, dintre cele care trec filtrele, pe cea cu RATING cât mai mare (și mai spectaculoasă).
+Pentru PLAJE, alege DOAR din lista „PLAJE CURATE" de mai jos (dacă e atașată): ia numele, ratingul și zona EXACT de acolo, nu inventa. Exclude cele cu mașină „NU"; cele cu „limitat" se pot, dar menționează condiția (taxă/rezervare). Potrivește zona plajei cu zona zilei.
+Nu duplica un loc deja în program. Spune scurt ratingul și motivul (ex: „~4.7, la ~20 min de Posada, parcare lângă plajă") și pune valoarea în câmpul rating.
+${beaches ? "\n" + beaches + "\n" : ""}
 Itinerariul curent:
 ${context || "(necunoscut)"}`;
 }
@@ -166,12 +205,17 @@ export async function onRequestPost({ request, env }) {
   }
   msgs.push({ role: "user", content: message });
 
-  const system = sysPrompt(context);
+  const beachRelevant = /plaj|beach|baie|snorkel|nisip/.test(lc) || addPlace || /recomand/.test(lc);
+  const system = sysPrompt(context, beachRelevant ? BEACHES : "");
   let resp;
   try {
-    const tool_choice = forceSpend ? { type: "tool", name: "noteaza_cheltuiala" }
-      : (addPlace ? { type: "tool", name: "adauga_loc" } : undefined);
+    // la cheltuieli forțăm direct; la adăugare lăsăm modelul să raționeze (alege cel mai bun din listă)
+    const tool_choice = forceSpend ? { type: "tool", name: "noteaza_cheltuiala" } : undefined;
     resp = await callAnthropic(key, { model: MODEL, max_tokens: 1024, system, tools: TOOLS, tool_choice, messages: msgs });
+    // dacă a cerut clar o adăugare dar modelul doar a vorbit (n-a apelat niciun tool), forțăm adăugarea
+    if (addPlace && !forceSpend && !(resp.content || []).some((b) => b.type === "tool_use")) {
+      resp = await callAnthropic(key, { model: MODEL, max_tokens: 1024, system, tools: TOOLS, tool_choice: { type: "tool", name: "adauga_loc" }, messages: msgs });
+    }
   } catch (e) {
     return json({ reply: "Eroare la AI: " + e.message });
   }
