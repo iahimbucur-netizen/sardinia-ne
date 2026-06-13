@@ -56,6 +56,47 @@ NV — Alghero / Stintino / Bosa (zilele 1 și 5, baza Alghero):
 - Porto Ferro ★4.5 — da — nisip roșcat-auriu, sălbatică, valuri (surf).
 - Bosa Marina (Bosa) ★4.2 — da — comodă, lângă orășelul colorat.`;
 
+const VIEWS = `BELVEDERE / PUNCTE PANORAMICE CURATE (rating orientativ):
+NE (Posada / San Teodoro / Olbia):
+- Castello della Fava (Posada) ★4.4 — mașină da + urcat scurt pe jos — panoramă peste vale și mare.
+- Belvedere spre Tavolara (Porto San Paolo / Capo Ceraso) ★4.5 — mașină da — vedere spre insula-munte Tavolara.
+- Capo Figari (Golfo Aranci) ★4.6 — mașină până la bază + drumeție — vedere amplă, mufloni.
+N (Costa Smeralda / Gallura):
+- Chiesa Stella Maris (Porto Cervo) ★4.5 — mașină da, parcare — priveliște peste Costa Smeralda.
+- Capo Testa (Santa Teresa Gallura) ★4.7 — mașină da + plimbare — stânci de granit sculptate, far.
+NV (Alghero):
+- Capo Caccia (Alghero) ★4.7 — mașină da — faleze uriașe, apus peste insula Foradada.
+- Bastioni Alghero ★4.6 — mașină da (parcare în oraș) — zidurile pe mare, apus, aperitivo.`;
+
+const FOOD = `RESTAURANTE CURATE (rating orientativ — la mâncare verifică oricum pe Maps, se schimbă des):
+NE (San Teodoro / Posada / Olbia):
+- Bellavista (San Teodoro) ★4.2 — vedere spre golful Capo Coda Cavallo, apus.
+- Da Nardino (San Teodoro) ★4.2 — pește: branzino în crustă de sare, fregola; rezervă.
+- La Taverna degli Artisti (San Teodoro) ★4.1 — spaghetti allo scoglio, fructe de mare.
+- Marco & Caterina (Posada) ★4.4 — fregola cu fructe de mare, lângă castel.
+N (Costa Smeralda / San Pantaleo):
+- Casa Bohème Bistro (San Pantaleo) ★4.4 — plates de împărțit, cocktailuri, vibe bun.
+NV (Alghero): în orașul vechi sunt multe trattorii de pește. Specialitatea locală: aragosta alla catalana (homar) și paella catalană. Caută pe Maps un loc 4.3+ în centro storico și rezervă seara.`;
+
+const SIGHTS = `VIZITE / SITURI / LOCURI INTERESANTE CURATE (rating orientativ; toate cu mașina, mai puțin Tavolara = cu barca):
+NV (Alghero): Centro Storico Alghero ★4.6 (oraș catalan, coral); Grotta di Nettuno ★4.5 (peșteră marină, 654 trepte sau barcă, ~14€); Nuraghe di Palmavera ★4.3 (sat nuragic); Bosa ★4.6 (orășel colorat pe râu + castel Malaspina).
+N: Castelsardo ★4.6 (borgo medieval pe stâncă + castel + împletituri); Nuraghe La Prisgiona + Tomba dei Giganti Coddu Vecchiu, Arzachena ★4.5 (situri nuragice, bilet combinat ~7€); San Pantaleo ★4.4 (sat de granit, artizani, piațetă); Porto Cervo (port de yacht-uri, La Passeggiata).
+NE: Castello della Fava, Posada ★4.4 (castel + borg medieval); Isola di Tavolara (insula-munte, doar cu barca); Stagno di San Teodoro (lagună cu flamingo dimineața); Basilica San Simplicio, Olbia ★4.4 (romanică).`;
+
+function buildRefs(lc, addPlace) {
+  const beach = /plaj|beach|baie|snorkel|nisip/.test(lc);
+  const view = /belveder|priveli|panoram|apus|\bvedere\b|\bpunct/.test(lc);
+  const food = /restaurant|m[aâ]nc|cin[aă]|pr[aâ]nz|pizz|pe[șs]te|trattoria|aperitivo/.test(lc);
+  const sight = /atrac[tț]i|de v[aă]zut|\bsit\b|nurag|biseric|\bsat\b|ora[șs]|muzeu|vizit|castel|grot/.test(lc);
+  const generic = (addPlace || /recomand|sugest/.test(lc)) && !beach && !view && !food && !sight;
+  const parts = [];
+  if (beach || generic) parts.push(BEACHES);
+  if (view || generic) parts.push(VIEWS);
+  if (food || generic) parts.push(FOOD);
+  if (sight || generic) parts.push(SIGHTS);
+  return parts.join("\n\n");
+}
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -105,7 +146,7 @@ const TOOLS = [
   },
 ];
 
-function sysPrompt(context, beaches) {
+function sysPrompt(context, refs) {
   return `Ești asistentul de călătorie al unui sejur în Sardinia: sosire și plecare din Alghero, cazare în Posada, 14–18 iunie 2026. Răspunde SCURT, în română, prietenos și concret. NU inventa prețuri, orare exacte sau rezervări.
 Zilele: 1=Duminică 14 iun (sosire Alghero 08:00), 2=Luni 15, 3=Marți 16, 4=Miercuri 17, 5=Joi 18 (plecare, avion 15:00 din Alghero).
 Categorii: beach, view, sight, boat, food, drive.
@@ -117,9 +158,9 @@ Cum alegi un loc când recomanzi/adaugi (mai ales plaje). Întâi FILTRE obligat
 - FILTRU 1 (mașină): utilizatorul ajunge cu mașina închiriată — exclude locurile accesibile doar cu barca sau cu drum lung pe jos; preferă unde se poate parca aproape.
 - FILTRU 2 (zonă): locul TREBUIE să fie în ACEEAȘI zonă/coastă cu opririle zilei, la max ~40 min cu mașina de ele. NU propune un loc de pe altă coastă, oricât de faimos sau bine cotat. Exemplu de GREȘEALĂ de evitat: dacă ziua e în zona San Teodoro / Tavolara / Posada (coasta de NE), NU propune Pelosa/Stintino sau Costa Smeralda — alege plaje din zona San Teodoro / Budoni / Siniscola (ex: Cala d'Ambra, Cala Girgolu, Berchida, Bidderosa). Pentru zilele din Alghero (1 și 5), alege din NV (Bombarde, Lazzaretto, Maria Pia, Mugoni).
 - ALEGE apoi, dintre cele care trec filtrele, pe cea cu RATING cât mai mare (și mai spectaculoasă).
-Pentru PLAJE, alege DOAR din lista „PLAJE CURATE" de mai jos (dacă e atașată): ia numele, ratingul și zona EXACT de acolo, nu inventa. Exclude cele cu mașină „NU"; cele cu „limitat" se pot, dar menționează condiția (taxă/rezervare). Potrivește zona plajei cu zona zilei.
-Nu duplica un loc deja în program. Spune scurt ratingul și motivul (ex: „~4.7, la ~20 min de Posada, parcare lângă plajă") și pune valoarea în câmpul rating.
-${beaches ? "\n" + beaches + "\n" : ""}
+Dacă locul apare în „LISTELE CURATE" de mai jos (plaje, belvedere, restaurante, situri), alege DOAR din ele: ia numele, ratingul și zona EXACT de acolo, nu inventa. Exclude cele cu mașină „NU"; „limitat" se poate, dar menționează condiția (taxă/rezervare). Potrivește zona locului cu zona zilei. La restaurante ratingurile sunt mai aproximative — sugerează verificarea pe Maps.
+Nu duplica un loc deja în program; dacă cel evident e deja acolo, alege ALTUL din liste. Spune scurt ratingul și motivul (ex: „~4.7, la ~20 min de Posada, parcare aproape") și pune valoarea în câmpul rating.
+${refs ? "\n" + refs + "\n" : ""}
 Itinerariul curent:
 ${context || "(necunoscut)"}`;
 }
@@ -205,8 +246,7 @@ export async function onRequestPost({ request, env }) {
   }
   msgs.push({ role: "user", content: message });
 
-  const beachRelevant = /plaj|beach|baie|snorkel|nisip/.test(lc) || addPlace || /recomand/.test(lc);
-  const system = sysPrompt(context, beachRelevant ? BEACHES : "");
+  const system = sysPrompt(context, buildRefs(lc, addPlace));
   let resp;
   try {
     // la cheltuieli forțăm direct; la adăugare lăsăm modelul să raționeze (alege cel mai bun din listă)
