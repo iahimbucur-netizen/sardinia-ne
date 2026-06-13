@@ -1,0 +1,20 @@
+{
+  "name": "Sardinia NE · Posada",
+  "short_name": "Sardinia NE",
+  "description": "Itinerariu de vacanță pe zile, offline-first, cu bife sincronizate în cloud.",
+  "lang": "ro",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF7F0",
+  "theme_color": "#0E7C86",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "sardinia-ne",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PWA itinerariu Sardinia NE — offline-first, bife sincronizate în Cloudflare KV",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy",
+    "kv:create": "wrangler kv namespace create TRIP_STATE"
+  },
+  "devDependencies": {
+    "wrangler": ">=3"
+  }
+}

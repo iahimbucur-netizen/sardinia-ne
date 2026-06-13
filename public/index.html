@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0E7C86" />
+  <title>Sardinia NE · Posada</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Sardinia NE" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="app-header" id="appHeader">
+    <div class="head-top">
+      <h1 class="app-title">Sardinia&nbsp;NE <span class="dot">·</span> Posada</h1>
+      <span class="sync" id="sync" title="stare sincronizare">…</span>
+    </div>
+
+    <div class="quick" id="quickRow" hidden>
+      <button class="quick-btn" type="button" data-near="restaurants">🍽️ Restaurante lângă mine</button>
+      <button class="quick-btn" type="button" data-near="gas station">⛽ Benzinării lângă mine</button>
+    </div>
+    <p class="quick-hint" id="quickHint" hidden>📍 Activează locația ca să vezi ce e lângă tine.</p>
+
+    <nav class="tabs" id="tabs" aria-label="Zile"></nav>
+
+    <div class="progress-wrap">
+      <div class="progress-row">
+        <span id="progressLabel" class="progress-label">0/0</span>
+        <span id="progressTotal" class="progress-total"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="banner" id="banner" hidden></div>
+    <div class="day-head" id="dayHead"></div>
+    <section class="cards" id="cards"></section>
+    <button class="reset-day" id="resetDay" type="button" hidden>↺ Resetează ziua</button>
+    <p class="foot-note">Datele itinerariului sunt salvate offline. Bifele se sincronizează în cloud când ai semnal.</p>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

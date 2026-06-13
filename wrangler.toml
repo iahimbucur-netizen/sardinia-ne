@@ -1,0 +1,15 @@
+# Cloudflare Pages — Sardinia NE
+# Static = folderul public/ ; API = folderul functions/ (compilat automat de Pages)
+
+name = "sardinia-ne"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "public"
+
+# Stocarea bifelor. Înlocuiește "id" cu ID-ul real obținut din comanda:
+#   npx wrangler kv namespace create TRIP_STATE
+# (vezi README.md, pasul 3). Pentru "npx wrangler pages dev" local, ID-ul
+# poate rămâne placeholder — KV-ul e simulat local.
+[[kv_namespaces]]
+binding = "TRIP_STATE"
+id = "INLOCUIESTE_CU_ID_UL_KV"
+# preview_id = "INLOCUIESTE_CU_PREVIEW_ID"   # opțional, pentru testare locală
