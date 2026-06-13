@@ -1,12 +1,7 @@
-// POST /api/toggle  body { id, value }  -> read-modify-write pe KV
-// Scriere protejată cu TOKEN (header x-trip-token). Toggle per-id, ca să nu se
-// calce device-urile între ele. Întoarce starea nouă completă.
+// POST /api/spend  body { id, amount }  -> read-modify-write pe KV
+// Setează/șterge spent[id]. Protejat cu TOKEN (header x-trip-token).
 
 const TRIP_ID = "sardinia-ne";
-
-// TOKEN: simplu, pentru un singur utilizator. Citește din env (Pages secret
-// "TRIP_TOKEN") dacă există, altfel folosește constanta de mai jos.
-// IMPORTANT: aceeași valoare trebuie pusă în public/app.js (const TOKEN).
 const DEFAULT_TOKEN = "sardinia-posada-2026";
 
 const CORS = {
@@ -18,11 +13,7 @@ const CORS = {
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      ...CORS,
-    },
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS },
   });
 }
 
@@ -32,21 +23,16 @@ export async function onRequestOptions() {
 
 export async function onRequestPost({ request, env }) {
   const token = env.TRIP_TOKEN || DEFAULT_TOKEN;
-  if (request.headers.get("x-trip-token") !== token) {
-    return json({ error: "unauthorized" }, 401);
-  }
+  if (request.headers.get("x-trip-token") !== token) return json({ error: "unauthorized" }, 401);
 
   let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "invalid json" }, 400);
-  }
+  try { body = await request.json(); } catch { return json({ error: "invalid json" }, 400); }
 
-  const { id, value } = body || {};
-  if (typeof id !== "string" || !id) {
-    return json({ error: "missing id" }, 400);
-  }
+  const { id } = body || {};
+  let amount = Number(body && body.amount);
+  if (typeof id !== "string" || !id) return json({ error: "missing id" }, 400);
+  if (!Number.isFinite(amount) || amount < 0) amount = 0;
+  amount = Math.round(amount * 100) / 100;
 
   const key = `state:${TRIP_ID}`;
   const raw = await env.TRIP_STATE.get(key);
@@ -54,9 +40,7 @@ export async function onRequestPost({ request, env }) {
   if (!state.checked || typeof state.checked !== "object") state.checked = {};
   if (!state.spent || typeof state.spent !== "object") state.spent = {};
 
-  if (value) state.checked[id] = true;
-  else delete state.checked[id];
-
+  if (amount > 0) state.spent[id] = amount; else delete state.spent[id];
   state.updatedAt = new Date().toISOString();
 
   await env.TRIP_STATE.put(key, JSON.stringify(state));

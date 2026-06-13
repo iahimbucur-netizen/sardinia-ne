@@ -25,7 +25,7 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet({ env }) {
-  const empty = { checked: {}, updatedAt: null };
+  const empty = { checked: {}, spent: {}, updatedAt: null };
   try {
     const raw = await env.TRIP_STATE.get(`state:${TRIP_ID}`);
     return json(raw ? JSON.parse(raw) : empty);

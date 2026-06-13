@@ -2,7 +2,7 @@
    App shell cache-first (versionat). /api/* = network-only (nu se cache-uiește;
    offline-ul e gestionat de localStorage în app.js). */
 
-const CACHE_VERSION = "sardinia-ne-v1";
+const CACHE_VERSION = "sardinia-ne-v2";
 const SHELL = [
   "/",
   "/index.html",
