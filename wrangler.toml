@@ -5,11 +5,7 @@ name = "sardinia-ne"
 compatibility_date = "2025-01-01"
 pages_build_output_dir = "public"
 
-# Stocarea bifelor. Înlocuiește "id" cu ID-ul real obținut din comanda:
-#   npx wrangler kv namespace create TRIP_STATE
-# (vezi README.md, pasul 3). Pentru "npx wrangler pages dev" local, ID-ul
-# poate rămâne placeholder — KV-ul e simulat local.
+# Stocarea bifelor — namespace KV dedicat (sardinia-ne-TRIP_STATE)
 [[kv_namespaces]]
 binding = "TRIP_STATE"
-id = "INLOCUIESTE_CU_ID_UL_KV"
-# preview_id = "INLOCUIESTE_CU_PREVIEW_ID"   # opțional, pentru testare locală
+id = "049245cf6e864a19946417e639067d7a"
