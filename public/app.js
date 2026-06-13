@@ -230,7 +230,7 @@ const DAY_ABBR = {
 const LS = { state: "tripState", pending: "pendingToggles", tab: "lastTab", banner: "bannerDismissed" };
 
 /* ---------- Stare ---------- */
-let state = { checked: {}, spent: {}, updatedAt: null };
+let state = { checked: {}, spent: {}, custom: [], updatedAt: null };
 let pending = [];          // [{kind:'check'|'spend', id, value}]
 let currentView = 0;       // index zi (0..n-1) sau "expenses"
 let flushing = false;
@@ -255,12 +255,13 @@ function normalize(s) {
   return {
     checked: (s.checked && typeof s.checked === "object") ? s.checked : {},
     spent: (s.spent && typeof s.spent === "object") ? s.spent : {},
+    custom: Array.isArray(s.custom) ? s.custom : [],
     updatedAt: s.updatedAt || null
   };
 }
 function loadLocal() {
   try { state = normalize(JSON.parse(localStorage.getItem(LS.state))); }
-  catch { state = { checked: {}, spent: {}, updatedAt: null }; }
+  catch { state = { checked: {}, spent: {}, custom: [], updatedAt: null }; }
   try { pending = JSON.parse(localStorage.getItem(LS.pending)) || []; }
   catch { pending = []; }
 }
@@ -390,44 +391,58 @@ async function onQuickClick(query) {
   catch (err) { if (err && err.code === 1) hideQuickRow(); else openTab("https://www.google.com/maps/search/" + encodeURIComponent(query)); }
 }
 async function onDirections(stop) {
-  try { openTab(directionsUrl(stop, await getPosition())); }
-  catch { openTab(directionsUrl(stop, null)); }
+  let origin = null;
+  try { origin = await getPosition(); } catch { /* fără locație */ }
+  let url;
+  if (typeof stop.lat === "number") {
+    url = directionsUrl(stop, origin);
+  } else {
+    const base = "https://www.google.com/maps/dir/?api=1";
+    const tail = `&destination=${encodeURIComponent(stop.name)}&travelmode=driving`;
+    url = origin ? `${base}&origin=${origin.lat},${origin.lng}${tail}` : base + tail;
+  }
+  openTab(url);
 }
 
 /* ---------- Calcule ---------- */
-function dayCounts(day) {
-  let done = 0; day.stops.forEach((s) => { if (state.checked[s.id]) done++; });
-  return { done, total: day.stops.length };
+function customForDay(i) { return (state.custom || []).filter((c) => c.day === i); }
+function stopsForDay(i) { return DATA[i].stops.concat(customForDay(i)); }
+function findStop(id) {
+  if (STOP_INDEX[id]) return STOP_INDEX[id].stop;
+  return (state.custom || []).find((c) => c.id === id) || null;
+}
+function dayCounts(i) {
+  const stops = stopsForDay(i); let done = 0;
+  stops.forEach((s) => { if (state.checked[s.id]) done++; });
+  return { done, total: stops.length };
 }
 function overallCounts() {
   let done = 0, total = 0;
-  DATA.forEach((d) => d.stops.forEach((s) => { total++; if (state.checked[s.id]) done++; }));
+  DATA.forEach((d, i) => stopsForDay(i).forEach((s) => { total++; if (state.checked[s.id]) done++; }));
   return { done, total };
 }
 function fmtEur(n) {
   n = Number(n) || 0;
   return (Number.isInteger(n) ? n.toString() : n.toFixed(2)) + " €";
 }
-function dayExpense(day) {
-  return day.stops.reduce((sum, s) => sum + (Number(state.spent[s.id]) || 0), 0);
+function dayExpense(i) {
+  return stopsForDay(i).reduce((sum, s) => sum + (Number(state.spent[s.id]) || 0), 0);
 }
 function grandExpense() {
   return Object.values(state.spent).reduce((sum, v) => sum + (Number(v) || 0), 0);
 }
 function expenseByCategory() {
   const map = {}; // label -> {icon, total}
-  // spoturi
   Object.keys(state.spent).forEach((id) => {
     const amt = Number(state.spent[id]) || 0;
     if (amt <= 0) return;
-    const idx = STOP_INDEX[id];
-    if (idx) {
-      const c = catInfo(idx.stop.category);
+    const st = findStop(id);
+    if (st) {
+      const c = catInfo(st.category);
       map[c.label] = map[c.label] || { icon: c.icon, total: 0 };
       map[c.label].total += amt;
     }
   });
-  // generale
   GENERAL_EXPENSES.forEach((g) => {
     const amt = Number(state.spent[g.id]) || 0;
     if (amt > 0) { map[g.label] = map[g.label] || { icon: g.icon, total: 0 }; map[g.label].total += amt; }
@@ -459,7 +474,7 @@ function refreshTabsState() {
   const kids = [...el.tabs.children];
   kids.forEach((b, i) => {
     if (i < DATA.length) {
-      const c = dayCounts(DATA[i]);
+      const c = dayCounts(i);
       b.classList.toggle("complete", c.total > 0 && c.done === c.total);
       b.classList.toggle("active", currentView === i);
     } else {
@@ -476,11 +491,11 @@ function renderProgress() {
     el.progressTotal.textContent = "Total " + fmtEur(grandExpense());
     return;
   }
-  const c = dayCounts(DATA[currentView]);
+  const c = dayCounts(currentView);
   el.progressLabel.textContent = `${c.done}/${c.total}`;
   el.progressFill.style.width = c.total ? (c.done / c.total) * 100 + "%" : "0%";
   const o = overallCounts();
-  const spent = dayExpense(DATA[currentView]);
+  const spent = dayExpense(currentView);
   el.progressTotal.textContent = `${o.done}/${o.total} sejur · azi ${fmtEur(spent)}`;
 }
 
@@ -540,9 +555,12 @@ function setCardImg(box, src, alt) {
 /* ---------- Randare: card oprire ---------- */
 function cardEl(stop) {
   const art = document.createElement("article");
-  art.className = "card" + (state.checked[stop.id] ? " done" : "");
+  const isCustom = !!stop.addedBy || (typeof stop.id === "string" && stop.id.indexOf("c-") === 0);
+  art.className = "card" + (state.checked[stop.id] ? " done" : "") + (isCustom ? " custom" : "");
   art.dataset.id = stop.id;
   const cat = catInfo(stop.category);
+  const hasCoords = typeof stop.lat === "number";
+  const mapsHref = stop.mapsUrl || (hasCoords ? `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}` : q(stop.name));
   const metaBits = [];
   if (stop.time && stop.time !== "—") metaBits.push(`⏰ ${stop.time}`);
   if (stop.driveFromBase) metaBits.push(`🚗 ${stop.driveFromBase}`);
@@ -554,13 +572,13 @@ function cardEl(stop) {
   html +=
     `<div class="card-head">
        <div style="flex:1 1 auto;min-width:0">
-         <span class="cat-chip">${cat.icon} ${cat.label}</span>
+         <span class="cat-chip">${cat.icon} ${cat.label}</span>${isCustom ? ` <span class="ai-chip">✨ adăugat${stop.addedBy === "ai" ? " de AI" : ""}</span>` : ""}
          <div class="card-name">${stop.name}</div>
          <div class="card-meta">${metaBits.map((m) => `<span>${m}</span>`).join("")}</div>
        </div>
        <label class="done-toggle"><span>Făcut</span><input type="checkbox" ${state.checked[stop.id] ? "checked" : ""}></label>
      </div>
-     <p class="card-note">${stop.note}</p>`;
+     ${stop.note ? `<p class="card-note">${stop.note}</p>` : ""}`;
 
   if (stop.reservation && stop.reservation.required) {
     html += `<a class="resv" href="${stop.reservation.url}" target="_blank" rel="noopener">🔖 ${stop.reservation.label}</a>`;
@@ -576,9 +594,10 @@ function cardEl(stop) {
   html +=
     `<div class="actions">
        <button class="act primary" type="button" data-act="dir">🧭 Direcții</button>
-       <a class="act" href="${placeUrl(stop)}" target="_blank" rel="noopener">📍 Hartă</a>
+       <a class="act" href="${mapsHref}" target="_blank" rel="noopener">📍 Hartă</a>
        <a class="act" href="${photosUrl(stop.name)}" target="_blank" rel="noopener">📷 Poze</a>
-       <a class="act" href="${nearbyUrl("gas station", stop)}" target="_blank" rel="noopener">⛽ Benzinării</a>
+       ${hasCoords ? `<a class="act" href="${nearbyUrl("gas station", stop)}" target="_blank" rel="noopener">⛽ Benzinării</a>` : ""}
+       ${isCustom ? `<button class="act danger" type="button" data-act="rm">✕ Scoate</button>` : ""}
      </div>
      <label class="spend"><span>💶 Cât ai cheltuit aici</span>
        <span class="spend-in"><input type="number" inputmode="decimal" min="0" step="1" placeholder="0" value="${spentVal}"> €</span>
@@ -588,6 +607,8 @@ function cardEl(stop) {
   const cb = art.querySelector(".done-toggle input");
   cb.addEventListener("change", () => { art.classList.toggle("done", cb.checked); toggleCheck(stop.id, cb.checked); });
   art.querySelector('[data-act="dir"]').addEventListener("click", () => onDirections(stop));
+  const rm = art.querySelector('[data-act="rm"]');
+  if (rm) rm.addEventListener("click", () => removeCustom(stop.id));
   const sp = art.querySelector(".spend input");
   sp.addEventListener("change", () => setSpend(stop.id, sp.value));
   if (stop.wiki) loadWikiPhoto(art.querySelector(".card-photo"), stop.wiki);
@@ -609,10 +630,10 @@ function renderDay(idx, withFade) {
   el.cards.innerHTML = "";
 
   // listă pe ore (cronologic); categoria apare ca etichetă pe fiecare card
-  const stops = [...day.stops].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const stops = [...stopsForDay(idx)].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   stops.forEach((s) => el.cards.appendChild(cardEl(s)));
 
-  el.resetDay.hidden = day.stops.length === 0;
+  el.resetDay.hidden = stops.length === 0;
   if (withFade) { el.cards.classList.remove("fade"); void el.cards.offsetWidth; el.cards.classList.add("fade"); }
 }
 
@@ -622,7 +643,7 @@ function renderExpenses() {
   el.resetDay.hidden = true;
   const grand = grandExpense();
 
-  const perDay = DATA.map((d, i) => ({ i, label: `${d.day} ${d.date}`, total: dayExpense(d) }))
+  const perDay = DATA.map((d, i) => ({ i, label: `${d.day} ${d.date}`, total: dayExpense(i) }))
     .filter((x) => x.total > 0);
   const perCat = expenseByCategory();
 
@@ -692,6 +713,95 @@ function resetDay() {
   flushQueue();
 }
 
+/* ---------- Chat AI ---------- */
+let aiBusy = false, aiGreeted = false;
+const chatHistory = [];
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function buildChatUI() {
+  const fab = document.createElement("button");
+  fab.id = "aiFab"; fab.type = "button"; fab.setAttribute("aria-label", "Întreabă AI"); fab.textContent = "🤖";
+  document.body.appendChild(fab);
+  const panel = document.createElement("div");
+  panel.id = "aiPanel"; panel.hidden = true;
+  panel.innerHTML =
+    `<div class="ai-head"><span>🤖 Întreabă despre sejur</span><button id="aiClose" type="button" aria-label="Închide">×</button></div>
+     <div class="ai-msgs" id="aiMsgs"></div>
+     <form class="ai-input" id="aiForm">
+       <input id="aiText" type="text" autocomplete="off" placeholder="ex: un restaurant bun în Alghero, adaugă-l">
+       <button id="aiSend" type="submit" aria-label="Trimite">➤</button>
+     </form>`;
+  document.body.appendChild(panel);
+  const open = () => {
+    panel.hidden = false; fab.hidden = true;
+    if (!aiGreeted) { addAiMsg("ai", "Salut! Întreabă orice despre sejur — sau zi-mi: adaugă [loc] în ziua X, și îl pun în program pe categoria lui."); aiGreeted = true; }
+    setTimeout(() => { const t = $("aiText"); if (t) t.focus(); }, 60);
+  };
+  const close = () => { panel.hidden = true; fab.hidden = false; };
+  fab.addEventListener("click", open);
+  $("aiClose").addEventListener("click", close);
+  $("aiForm").addEventListener("submit", (e) => { e.preventDefault(); sendAsk(); });
+}
+function addAiMsg(who, text) {
+  const box = $("aiMsgs"); if (!box) return null;
+  const b = document.createElement("div");
+  b.className = "ai-msg ai-" + who;
+  b.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+  box.appendChild(b); box.scrollTop = box.scrollHeight;
+  return b;
+}
+function buildAiContext() {
+  const lines = [];
+  DATA.forEach((d, i) => {
+    lines.push(`Ziua ${i + 1} (${d.day} ${d.date}) — ${d.title}:`);
+    [...stopsForDay(i)].sort((a, b) => (a.time || "").localeCompare(b.time || "")).forEach((s) => {
+      lines.push(`  ${s.time || "--:--"} [${s.category}] ${s.name}${state.checked[s.id] ? " ✓" : ""}`);
+    });
+  });
+  const g = grandExpense(); if (g > 0) lines.push(`Cheltuit până acum: ${fmtEur(g)}.`);
+  return lines.join("\n");
+}
+async function sendAsk() {
+  const inp = $("aiText"); if (!inp) return;
+  const text = (inp.value || "").trim();
+  if (!text || aiBusy) return;
+  inp.value = ""; aiBusy = true;
+  const sendBtn = $("aiSend"); if (sendBtn) sendBtn.disabled = true;
+  addAiMsg("user", text);
+  const typing = addAiMsg("ai", "…"); if (typing) typing.classList.add("ai-typing");
+  try {
+    const r = await fetch("/api/ask", {
+      method: "POST", headers: { "Content-Type": "application/json", "x-trip-token": TOKEN },
+      body: JSON.stringify({ message: text, context: buildAiContext(), history: chatHistory.slice(-8) })
+    });
+    const j = await r.json();
+    if (typing) typing.remove();
+    const reply = (j && j.reply) || "(fără răspuns)";
+    addAiMsg("ai", reply);
+    chatHistory.push({ role: "user", content: text }, { role: "assistant", content: reply });
+    if (j && j.state) { state = normalize(j.state); saveLocal(); renderAll(); }
+    if (j && j.added && j.added.length) addAiMsg("note", "✅ În program: " + j.added.map((a) => a.name).join(", "));
+  } catch (e) {
+    if (typing) typing.remove();
+    addAiMsg("ai", "N-am reușit să răspund acum (semnal?). Încearcă din nou.");
+  }
+  aiBusy = false;
+  const sb = $("aiSend"); if (sb) sb.disabled = false;
+  const t2 = $("aiText"); if (t2) t2.focus();
+}
+async function removeCustom(id) {
+  if (!confirm("Scoți locul adăugat din program?")) return;
+  state.custom = (state.custom || []).filter((c) => c.id !== id);
+  delete state.checked[id]; delete state.spent[id];
+  state.updatedAt = new Date().toISOString();
+  saveLocal(); renderAll();
+  try {
+    const j = await apiPost("/api/custom", { op: "remove", id });
+    if (j && j.checked) { state = normalize(j); saveLocal(); renderAll(); }
+  } catch { /* rămâne local; se reconciliază la net */ }
+}
+
 /* ---------- Service worker ---------- */
 function registerSW() {
   if ("serviceWorker" in navigator) {
@@ -710,6 +820,7 @@ function init() {
   }
   renderAll();
   initGeoUI();
+  buildChatUI();
   updateSync();
   syncFromCloud().then(() => flushQueue());
 
