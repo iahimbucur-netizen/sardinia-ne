@@ -44,7 +44,8 @@ const TOOLS = [
         nume: { type: "string" },
         categorie: { type: "string", enum: CATS, description: "beach=plajă, view=belvedere, sight=vizită/sit, boat=pe mare, food=restaurant, drive=drum" },
         ora: { type: "string", description: "Oră aproximativă HH:MM" },
-        notita: { type: "string", description: "Descriere scurtă utilă" },
+        notita: { type: "string", description: "Descriere scurtă utilă (rating, de ce, parcare/acces)" },
+        rating: { type: "number", description: "Rating aproximativ 0–5 (Google Maps), pentru afișare pe card. Dă o estimare rezonabilă dacă o cunoști." },
       },
       required: ["zi", "nume", "categorie"],
     },
@@ -73,6 +74,12 @@ Categorii: beach, view, sight, boat, food, drive.
 - Dacă utilizatorul cere să ADAUGI un loc → apelează adauga_loc.
 - REGULĂ STRICTĂ: ori de câte ori utilizatorul menționează o sumă pe care a cheltuit-o / plătit-o / dat-o (la un loc SAU pe benzină / cazare / mașină / cumpărături / diverse), TREBUIE să apelezi tool-ul noteaza_cheltuiala. NU spune în text că ai notat decât DUPĂ ce ai apelat efectiv tool-ul. Categoriile generale (benzină etc.) sunt ținte perfect valide — apelează tool-ul cu nume="benzină" etc. Folosește operatie="aduna" pentru lucruri repetate (ex: încă o alimentare). Dacă locul nu e în program și are sens, dă și zi+categorie ca să-l creezi.
 Confirmă scurt în text DOAR ce ai făcut efectiv prin tool-uri.
+
+Cum alegi un loc când recomanzi/adaugi (mai ales plaje). Întâi FILTRE obligatorii, apoi ratingul alege:
+- FILTRU 1 (mașină): utilizatorul ajunge cu mașina închiriată — exclude locurile accesibile doar cu barca sau cu drum lung pe jos; preferă unde se poate parca aproape.
+- FILTRU 2 (zonă): locul TREBUIE să fie în ACEEAȘI zonă/coastă cu opririle zilei, la max ~40 min cu mașina de ele. NU propune un loc de pe altă coastă, oricât de faimos sau bine cotat. Exemplu de GREȘEALĂ de evitat: dacă ziua e în zona San Teodoro / Tavolara / Posada (coasta de NE), NU propune Pelosa/Stintino sau Costa Smeralda — alege plaje din zona San Teodoro / Budoni / Siniscola (ex: Cala d'Ambra, Cala Girgolu, Berchida, Bidderosa). Pentru zilele din Alghero (1 și 5), alege din NV (Bombarde, Lazzaretto, Maria Pia, Mugoni).
+- ALEGE apoi, dintre cele care trec filtrele, pe cea cu RATING cât mai mare.
+Nu duplica un loc deja în program. Spune scurt ratingul (estimativ) și motivul (ex: „~4.6, la 15 min, parcare lângă plajă") și pune valoarea în câmpul rating. Dacă nu ești sigur de zonă sau rating, spune-i sincer să verifice pe Maps.
 
 Itinerariul curent:
 ${context || "(necunoscut)"}`;
@@ -143,6 +150,8 @@ export async function onRequestPost({ request, env }) {
   const hasAmount = /\d/.test(message);
   const spendIntent = /\bam (dat|cheltuit|pl[aă]tit|pus|alimentat|achitat|scos)\b|m[-\s]?a costat|ne[-\s]?a costat|costat[- ]?\w*\s*\d/.test(lc);
   const forceSpend = hasAmount && spendIntent;
+  // cerere clară de adăugare a unui loc (fără sumă) -> forțăm tool-ul de adăugare
+  const addPlace = !hasAmount && /adaug|[îi]n program|bag[ăa]\b|pune[- ]?o\b/.test(lc);
 
   const dir = [];
   if (Array.isArray(body && body.stops)) {
@@ -160,7 +169,8 @@ export async function onRequestPost({ request, env }) {
   const system = sysPrompt(context);
   let resp;
   try {
-    const tool_choice = forceSpend ? { type: "tool", name: "noteaza_cheltuiala" } : undefined;
+    const tool_choice = forceSpend ? { type: "tool", name: "noteaza_cheltuiala" }
+      : (addPlace ? { type: "tool", name: "adauga_loc" } : undefined);
     resp = await callAnthropic(key, { model: MODEL, max_tokens: 1024, system, tools: TOOLS, tool_choice, messages: msgs });
   } catch (e) {
     return json({ reply: "Eroare la AI: " + e.message });
@@ -187,10 +197,16 @@ export async function onRequestPost({ request, env }) {
       if (tu.name === "adauga_loc") {
         const zi = Math.min(5, Math.max(1, parseInt(inp.zi, 10) || 1));
         const cat = CATS.indexOf(inp.categorie) >= 0 ? inp.categorie : "sight";
+        const nm = norm(inp.nume || "");
+        if (nm && dir.some((e) => e.day === (zi - 1) && (norm(e.name).includes(nm) || nm.includes(norm(e.name))))) {
+          toolResults.push({ type: "tool_result", tool_use_id: tu.id, content: `„${String(inp.nume).slice(0, 80)}" e deja în ziua ${zi} — nu l-am dublat.` });
+          continue;
+        }
+        const rating = (typeof inp.rating === "number" && inp.rating > 0 && inp.rating <= 5) ? Math.round(inp.rating * 10) / 10 : null;
         const stop = {
           id: "c-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36),
           day: zi - 1, name: String(inp.nume || "Loc nou").slice(0, 120), category: cat,
-          time: String(inp.ora || "").slice(0, 5), note: String(inp.notita || "").slice(0, 400), addedBy: "ai",
+          time: String(inp.ora || "").slice(0, 5), note: String(inp.notita || "").slice(0, 400), rating, addedBy: "ai",
         };
         state.custom.push(stop); dir.push({ id: stop.id, name: stop.name, day: stop.day }); added.push(stop);
         toolResults.push({ type: "tool_result", tool_use_id: tu.id, content: `Adăugat „${stop.name}" în ziua ${zi}.` });
