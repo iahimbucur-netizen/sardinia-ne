@@ -4,7 +4,7 @@
    - /api/*: network-only (offline-ul e gestionat de localStorage în app.js).
    - Instalare tolerantă: dacă o resursă pică, restul tot se cache-uiesc. */
 
-const CACHE = "sardinia-ne-v6";
+const CACHE = "sardinia-ne-v7";
 // NU includem "/" — pe Cloudflare Pages face 308 → "/", iar un
 // răspuns redirecționat nu poate fi pus în cache (ar fi eșuat instalarea).
 const SHELL = [

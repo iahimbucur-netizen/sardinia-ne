@@ -735,7 +735,7 @@ function buildChatUI() {
   document.body.appendChild(panel);
   const open = () => {
     panel.hidden = false; fab.hidden = true;
-    if (!aiGreeted) { addAiMsg("ai", "Salut! Întreabă orice despre sejur — sau zi-mi: adaugă [loc] în ziua X, și îl pun în program pe categoria lui."); aiGreeted = true; }
+    if (!aiGreeted) { addAiMsg("ai", "Salut! Întreabă orice despre sejur. Pot și să adaug un loc în program (zi-mi: adaugă [loc] în ziua X) sau să-ți trec o cheltuială (zi-mi: am dat 45€ la Da Nardino, ori 60 benzină)."); aiGreeted = true; }
     setTimeout(() => { const t = $("aiText"); if (t) t.focus(); }, 60);
   };
   const close = () => { panel.hidden = true; fab.hidden = false; };
@@ -762,6 +762,12 @@ function buildAiContext() {
   const g = grandExpense(); if (g > 0) lines.push(`Cheltuit până acum: ${fmtEur(g)}.`);
   return lines.join("\n");
 }
+function buildAiStops() {
+  const arr = [];
+  DATA.forEach((d, i) => d.stops.forEach((s) => arr.push({ id: s.id, name: s.name, day: i })));
+  (state.custom || []).forEach((c) => arr.push({ id: c.id, name: c.name, day: c.day }));
+  return arr;
+}
 async function sendAsk() {
   const inp = $("aiText"); if (!inp) return;
   const text = (inp.value || "").trim();
@@ -773,7 +779,7 @@ async function sendAsk() {
   try {
     const r = await fetch("/api/ask", {
       method: "POST", headers: { "Content-Type": "application/json", "x-trip-token": TOKEN },
-      body: JSON.stringify({ message: text, context: buildAiContext(), history: chatHistory.slice(-8) })
+      body: JSON.stringify({ message: text, context: buildAiContext(), stops: buildAiStops(), history: chatHistory.slice(-8) })
     });
     const j = await r.json();
     if (typing) typing.remove();
@@ -782,6 +788,7 @@ async function sendAsk() {
     chatHistory.push({ role: "user", content: text }, { role: "assistant", content: reply });
     if (j && j.state) { state = normalize(j.state); saveLocal(); renderAll(); }
     if (j && j.added && j.added.length) addAiMsg("note", "✅ În program: " + j.added.map((a) => a.name).join(", "));
+    if (j && j.spends && j.spends.length) addAiMsg("note", "💶 Notat: " + j.spends.map((s) => `${fmtEur(s.amount)} · ${s.name}`).join(", "));
   } catch (e) {
     if (typing) typing.remove();
     addAiMsg("ai", "N-am reușit să răspund acum (semnal?). Încearcă din nou.");
