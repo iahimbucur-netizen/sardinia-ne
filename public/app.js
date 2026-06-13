@@ -15,52 +15,54 @@ const BASE = { name: "Posada (cazare)", lat: 40.6300, lng: 9.7150 };
 
 // Căutare Maps după nume (pin fiabil pentru locuri cunoscute fără CID)
 const q = (name) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(name);
+// Galerie de poze a locului (Google Images)
+const photosUrl = (name) => "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(name + " Sardegna");
 
 const DATA = [
   {
     day: "Duminică", date: "14 iun", title: "Sosire Alghero & Riviera del Corallo",
-    subtitle: "Aterizezi la Alghero. Cât apuci depinde de oră — orașul vechi + apus la Capo Caccia, apoi drum la Posada (~2h30, seara).",
+    subtitle: "Aterizezi la 08:00 — ai toată ziua în Alghero/NV, apoi transfer la Posada seara (~2h30). Poți muta orașul mai devreme și păstra Capo Caccia pe seară dacă vrei apusul peste Foradada (ajungi mai târziu la Posada).",
     center: { lat: 40.5585, lng: 8.3163 },
     stops: [
       { id: "d1-aeroport", name: "Aeroport Alghero-Fertilia (AHO)", category: "drive",
-        time: "—", driveFromBase: "sosire", rating: null,
-        note: "Aterizare + ridici mașina închiriată. De aici pleci spre oraș (~10 min) sau direct spre Capo Caccia.",
+        time: "08:00", driveFromBase: "sosire", rating: null,
+        note: "Aterizezi la 08:00. Ridici mașina închiriată — de aici, ~30 min până la Capo Caccia.",
         lat: 40.6320, lng: 8.2906, mapsUrl: q("Aeroporto di Alghero-Fertilia"), nearby: [] },
-      { id: "d1-centro", name: "Centro Storico Alghero (Bastioni + Catedrala)", category: "sight",
-        time: "12:00", driveFromBase: "10 min din aeroport", rating: 4.6,
-        note: "Orașul vechi catalan: ziduri de apărare pe mare (bastioni), Catedrala Santa Maria, bijuterii din coral roșu. Plimbare + prânz.",
-        lat: 40.5585, lng: 8.3163, mapsUrl: q("Alghero Centro Storico Bastioni"), nearby: [] },
+      { id: "d1-nettuno", name: "Grotta di Nettuno", category: "sight", wiki: "en:Neptune's Grotto",
+        time: "09:30", driveFromBase: "30 min din aeroport", rating: 4.5,
+        note: "Peșteră marină spectaculoasă în Capo Caccia: stalactite, lac subteran. Rezervă slot de dimineață (mai puțină lume, mare mai calmă). Cobori 654 trepte (Escala del Cabirol) sau ajungi cu barca din port. ~14€, rezervă online. Suspendată pe mare agitată — sună înainte.",
+        lat: 40.5606, lng: 8.1581, mapsUrl: q("Grotta di Nettuno"),
+        reservation: { required: true, label: "Rezervă online (~14€)", url: "https://grottadinettuno.it/en/" },
+        nearby: [] },
+      { id: "d1-capocaccia", name: "Capo Caccia (belvedere)", category: "view", wiki: "Capo Caccia",
+        time: "11:00", driveFromBase: "lângă grotă", rating: 4.7,
+        note: "După grotă, urci pe faleză: priveliști uriașe peste mare și insula Foradada. (Apusul de aici e legendar — vino pe seară dacă nu te grăbești la Posada.)",
+        lat: 40.5610, lng: 8.1672, mapsUrl: q("Capo Caccia Alghero"),
+        nearby: [
+          { name: "Nuraghe di Palmavera",
+            blurb: "Complex nuragic din Epoca Bronzului pe drumul de întoarcere spre Alghero — oprire scurtă dacă ai chef.",
+            mapsUrl: q("Nuraghe di Palmavera"), website: null }
+        ] },
       { id: "d1-bombarde", name: "Spiaggia Le Bombarde", category: "beach",
-        time: "15:00", driveFromBase: "15 min din Alghero", rating: 4.4,
-        note: "Apă turcoaz, nisip fin, încadrată de pini. Cea mai ușoară baie lângă Alghero.",
+        time: "13:00", driveFromBase: "25 min din Capo Caccia", rating: 4.4,
+        note: "Apă turcoaz, nisip fin, încadrată de pini. Baie + prânz pe plajă.",
         lat: 40.5849, lng: 8.2447, mapsUrl: q("Spiaggia Le Bombarde Alghero"),
         nearby: [
           { name: "Spiaggia del Lazzaretto",
             blurb: "Golfuleț cu apă mică turcoaz, la 1 min de Bombarde — bun dacă e aglomerat.",
             mapsUrl: q("Spiaggia del Lazzaretto Alghero"), website: null }
         ] },
-      { id: "d1-nettuno", name: "Grotta di Nettuno", category: "sight",
-        time: "17:00", driveFromBase: "25 min din Alghero", rating: 4.5,
-        note: "Peșteră marină spectaculoasă în Capo Caccia: stalactite, lac subteran. Cobori 654 trepte (Escala del Cabirol) sau ajungi cu barca din port. ~14€, rezervă online. Suspendată pe mare agitată — sună înainte.",
-        lat: 40.5606, lng: 8.1581, mapsUrl: q("Grotta di Nettuno"),
-        reservation: { required: true, label: "Rezervă online (~14€)", url: "https://grottadinettuno.it/en/" },
-        nearby: [] },
-      { id: "d1-capocaccia", name: "Capo Caccia (belvedere & apus)", category: "view",
-        time: "18:45", driveFromBase: "25 min din Alghero", rating: 4.7,
-        note: "Faleze uriașe deasupra mării. Apusul peste insula Foradada e printre cele mai frumoase din Sardinia.",
-        lat: 40.5610, lng: 8.1672, mapsUrl: q("Capo Caccia Alghero"),
-        nearby: [
-          { name: "Nuraghe di Palmavera",
-            blurb: "Complex nuragic din Epoca Bronzului pe drumul spre Porto Conte — dacă ai timp dimineața.",
-            mapsUrl: q("Nuraghe di Palmavera"), website: null }
-        ] },
+      { id: "d1-centro", name: "Centro Storico Alghero (Bastioni + Catedrala)", category: "sight", wiki: "Alghero",
+        time: "16:00", driveFromBase: "15 min din Bombarde", rating: 4.6,
+        note: "Orașul vechi catalan: ziduri pe mare (bastioni), Catedrala Santa Maria, bijuterii din coral roșu. Plimbare + aperitivo, eventual apus pe ziduri.",
+        lat: 40.5585, lng: 8.3163, mapsUrl: q("Alghero Centro Storico Bastioni"), nearby: [] },
       { id: "d1-transfer", name: "Transfer Alghero → Posada (cazare)", category: "drive",
-        time: "20:00", driveFromBase: "~2h30", rating: null,
-        note: "Drum spre baza din Posada (coasta de NE). Pe SS131 + SS129. Ajungi seara — cină ușoară la sosire.",
+        time: "19:30", driveFromBase: "~2h30", rating: null,
+        note: "Drum spre baza din Posada (coasta de NE). Pe SS131 + SS129. Ajungi seara.",
         lat: 40.6300, lng: 9.7150, mapsUrl: q("Posada Sardegna"), nearby: [] },
       { id: "d1-marco", name: "Marco & Caterina (Posada)", category: "food",
-        time: "21:30", driveFromBase: "5 min", rating: 4.4,
-        note: "Cină de sosire lângă castel — fregola cu fructe de mare. (Sau orice deschis în Posada, dacă ajungi târziu.)",
+        time: "22:00", driveFromBase: "5 min", rating: 4.4,
+        note: "Cină de sosire lângă castel — fregola cu fructe de mare. (Sau orice e deschis în Posada, dacă ajungi târziu.)",
         lat: 40.6367796, lng: 9.725594, mapsUrl: "https://maps.google.com/?cid=2887425309595092167", nearby: [] }
     ]
   },
@@ -69,7 +71,7 @@ const DATA = [
     subtitle: "Cele mai spectaculoase plaje din zonă, ~25 min din Posada. Brandinchi/Lu Impostu cer rezervare.",
     center: { lat: 40.834, lng: 9.686 },
     stops: [
-      { id: "d2-castello", name: "Castello della Fava (Posada)", category: "sight",
+      { id: "d2-castello", name: "Castello della Fava (Posada)", category: "sight", wiki: "Castello della Fava",
         time: "09:00", driveFromBase: "5 min", rating: 4.4,
         note: "Urci pe ulițele de piatră ale borgului medieval până la castel (4€). Panoramă peste vale și mare.",
         lat: 40.6381382, lng: 9.7239156, mapsUrl: "https://maps.google.com/?cid=9107459291129127808", nearby: [] },
@@ -145,7 +147,7 @@ const DATA = [
             blurb: "Mormânt megalitic cu stela de 4,4 m — cea mai înaltă cunoscută. La ~700 m de La Prisgiona.",
             mapsUrl: "https://www.google.com/maps/search/?api=1&query=Tomba%20dei%20Giganti%20Coddu%20Vecchiu", website: "https://www.gesecoarzachena.it/" }
         ] },
-      { id: "d4-portocervo", name: "Porto Cervo", category: "sight",
+      { id: "d4-portocervo", name: "Porto Cervo", category: "sight", wiki: "Porto Cervo",
         time: "14:00", driveFromBase: "1h20", rating: null,
         note: "Plimbare prin port + La Passeggiata, vibe de yacht-uri.",
         lat: 41.1315336, lng: 9.535745, mapsUrl: "https://maps.google.com/?cid=14342356208876400881",
@@ -500,22 +502,60 @@ function renderBanner() {
   $("bannerX").addEventListener("click", () => { localStorage.setItem(LS.banner, "1"); renderBanner(); });
 }
 
+/* ---------- Poze din Wikipedia (inline, cache în sesiune) ---------- */
+const WIKI_CACHE = {};
+function loadWikiPhoto(box, spec) {
+  if (!box) return;
+  let lang = "it", title = spec;
+  const m = /^([a-z]{2}):(.+)$/.exec(spec);
+  if (m) { lang = m[1]; title = m[2]; }
+  const key = "wikiimg:" + spec;
+  let cached = WIKI_CACHE[spec];
+  if (cached === undefined) { try { const s = sessionStorage.getItem(key); if (s !== null) cached = s; } catch { /* ignore */ } }
+  if (cached === "none") { box.remove(); return; }
+  if (cached) { setCardImg(box, cached, title); return; }
+  fetch("https://" + lang + ".wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title.replace(/ /g, "_")))
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      const src = j && j.thumbnail && j.thumbnail.source;
+      if (src) {
+        const big = src.replace(/\/\d+px-/, "/640px-");
+        WIKI_CACHE[spec] = big; try { sessionStorage.setItem(key, big); } catch { /* ignore */ }
+        setCardImg(box, big, title);
+      } else {
+        WIKI_CACHE[spec] = "none"; try { sessionStorage.setItem(key, "none"); } catch { /* ignore */ }
+        box.remove();
+      }
+    })
+    .catch(() => box.remove());
+}
+function setCardImg(box, src, alt) {
+  const img = new Image();
+  img.className = "card-photo-img"; img.loading = "lazy"; img.alt = alt;
+  img.onload = () => { box.innerHTML = ""; box.appendChild(img); box.classList.add("loaded"); };
+  img.onerror = () => box.remove();
+  img.src = src;
+}
+
 /* ---------- Randare: card oprire ---------- */
 function cardEl(stop) {
   const art = document.createElement("article");
   art.className = "card" + (state.checked[stop.id] ? " done" : "");
   art.dataset.id = stop.id;
-  const icon = catInfo(stop.category).icon;
+  const cat = catInfo(stop.category);
   const metaBits = [];
   if (stop.time && stop.time !== "—") metaBits.push(`⏰ ${stop.time}`);
   if (stop.driveFromBase) metaBits.push(`🚗 ${stop.driveFromBase}`);
   if (stop.rating) metaBits.push(`<span class="star">★ ${stop.rating}</span>`);
   const spentVal = state.spent[stop.id] != null ? state.spent[stop.id] : "";
 
-  let html =
+  let html = "";
+  if (stop.wiki) html += `<div class="card-photo"><div class="card-photo-skel"></div></div>`;
+  html +=
     `<div class="card-head">
        <div style="flex:1 1 auto;min-width:0">
-         <div class="card-name">${icon} ${stop.name}</div>
+         <span class="cat-chip">${cat.icon} ${cat.label}</span>
+         <div class="card-name">${stop.name}</div>
          <div class="card-meta">${metaBits.map((m) => `<span>${m}</span>`).join("")}</div>
        </div>
        <label class="done-toggle"><span>Făcut</span><input type="checkbox" ${state.checked[stop.id] ? "checked" : ""}></label>
@@ -537,7 +577,7 @@ function cardEl(stop) {
     `<div class="actions">
        <button class="act primary" type="button" data-act="dir">🧭 Direcții</button>
        <a class="act" href="${placeUrl(stop)}" target="_blank" rel="noopener">📍 Hartă</a>
-       <a class="act" href="${nearbyUrl("restaurants", stop)}" target="_blank" rel="noopener">🍽️ Restaurante</a>
+       <a class="act" href="${photosUrl(stop.name)}" target="_blank" rel="noopener">📷 Poze</a>
        <a class="act" href="${nearbyUrl("gas station", stop)}" target="_blank" rel="noopener">⛽ Benzinării</a>
      </div>
      <label class="spend"><span>💶 Cât ai cheltuit aici</span>
@@ -550,6 +590,7 @@ function cardEl(stop) {
   art.querySelector('[data-act="dir"]').addEventListener("click", () => onDirections(stop));
   const sp = art.querySelector(".spend input");
   sp.addEventListener("change", () => setSpend(stop.id, sp.value));
+  if (stop.wiki) loadWikiPhoto(art.querySelector(".card-photo"), stop.wiki);
   return art;
 }
 
@@ -567,19 +608,9 @@ function renderDay(idx, withFade) {
      </div>`;
   el.cards.innerHTML = "";
 
-  // grupare pe categorii (în ordinea CATEGORIES), iar în cadrul categoriei după oră
-  const groups = {};
-  day.stops.forEach((s) => { (groups[s.category] = groups[s.category] || []).push(s); });
-  CATEGORIES.forEach((cat) => {
-    const list = groups[cat.key];
-    if (!list || !list.length) return;
-    list.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-    const h = document.createElement("div");
-    h.className = "cat-head";
-    h.innerHTML = `${cat.icon} ${cat.label} <span class="cat-count">${list.length}</span>`;
-    el.cards.appendChild(h);
-    list.forEach((s) => el.cards.appendChild(cardEl(s)));
-  });
+  // listă pe ore (cronologic); categoria apare ca etichetă pe fiecare card
+  const stops = [...day.stops].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  stops.forEach((s) => el.cards.appendChild(cardEl(s)));
 
   el.resetDay.hidden = day.stops.length === 0;
   if (withFade) { el.cards.classList.remove("fade"); void el.cards.offsetWidth; el.cards.classList.add("fade"); }
